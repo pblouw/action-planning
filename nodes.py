@@ -25,12 +25,12 @@ class MotorSystem:
     def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
-        self.THRESHOLD = 0.2 
+        self.THRESHOLD = 0.3
         self.last_thing = None
         self.last_action = None
-        self.integration_time = 0.1 #if input consistent for this long then act
+        self.integration_time = 0.01 #if input consistent for this long then act
         self.integration_start_time = 0
-        self.action_time = 0.5
+        self.action_time = 0.15
         self.action_start_time = -self.action_time
     
     def act(self, time, thing, action, subject=None, place=None):
@@ -59,7 +59,7 @@ class MotorSystem:
 #         print(thing_text)
         
         if thing_text is not None and action_text is not None:
-            print('integrating ' + action_text + ' with ' + thing_text)
+            # print('integrating ' + action_text + ' with ' + thing_text)
                     
             if not self.integrating(time) and not self.acting(time): 
                 print('performing action ' + action_text + ' with ' + thing_text)
