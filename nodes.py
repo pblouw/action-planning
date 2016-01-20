@@ -55,12 +55,9 @@ class MotorSystem:
         if not action_text == self.last_action: 
             self.integration_start_time = time
             self.last_action = action_text
-
-#         print(thing_text)
         
         if thing_text is not None and action_text is not None:
-            # print('integrating ' + action_text + ' with ' + thing_text)
-                    
+
             if not self.integrating(time) and not self.acting(time): 
                 print('performing action ' + action_text + ' with ' + thing_text)
                 self.world.do(thing_text, action_text)
@@ -106,43 +103,63 @@ class VisualSystem:
     def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
-        self.THRESHOLD = 0.2
+        self.THRESHOLD = 0.6
         self.last_location = None
         self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
         self.integration_time = 0.1 #if location consistent for this long then sense
         self.integration_start_time = 0 
-        
-    def sense(self, time, location):
-        if not isinstance(location, spa.pointer.SemanticPointer): 
-            location = spa.pointer.SemanticPointer(location)
-                        
-        # TODO: should we allow compound locations, e.g. on-counter & beside-sink?
-        # TODO: could also specify kind
-        inv_relation = self.vocab.parse('~(IN+ON+UNDER+BESIDE)') #this seems touchy -- getting some incorrect results with D=100
-        thing = location.convolve(inv_relation)
-        relation = location.convolve(thing.__invert__())
-        
-        thing_key = get_key(self.vocab, thing, self.THRESHOLD)
-        relation_key = get_key(self.vocab, relation, self.THRESHOLD)
-        
-        loc = None
-        if thing_key is not None and relation_key is not None:
-            loc = world.Location(relation_key, self.world.get(thing_key))
-        
-        print('integrating: ' + str(loc))
 
-        if loc == None or not loc == self.last_location: 
-            self.integration_start_time = time
-            self.last_location = loc
+        self.state_vocab = spa.Vocabulary(self.vocab.dimensions)
+        
+    def sense(self, time, inp):
+
+        key = get_key(self.vocab, inp, 0.3)
+
+        state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED','UNDER-TAP':'KETTLE_UNDER_TAP'}
+
+        for thing in self.world.things: 
+            states = thing.get_state().values()
             
-        if not self.integrating(time) : 
-            self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
-            things_at_location = self.world.at_location(loc) 
-            for t in things_at_location: 
-                print(t)
-                self.last_perception = self.last_perception + self.encode_thing(t)
+            for state in states:
+                if state in state_to_key:
+                    print self.vocab[state_to_key[state]].compare(inp)
+                
+                    if self.vocab[state_to_key[state]].compare(inp) > self.THRESHOLD:
+                        return 1
+        else:
+            return 0
+
+
+        # if not isinstance(location, spa.pointer.SemanticPointer): 
+        #     location = spa.pointer.SemanticPointer(location)
+                        
+        # # TODO: should we allow compound locations, e.g. on-counter & beside-sink?
+        # # TODO: could also specify kind
+        # inv_relation = self.vocab.parse('~(IN+ON+UNDER+BESIDE)') #this seems touchy -- getting some incorrect results with D=100
+        # thing = location.convolve(inv_relation)
+        # relation = location.convolve(thing.__invert__())
+        
+        # thing_key = get_key(self.vocab, thing, self.THRESHOLD)
+        # relation_key = get_key(self.vocab, relation, self.THRESHOLD)
+        
+        # loc = None
+        # if thing_key is not None and relation_key is not None:
+        #     loc = world.Location(relation_key, self.world.get(thing_key))
+        
+        # print('integrating: ' + str(loc))
+
+        # if loc == None or not loc == self.last_location: 
+        #     self.integration_start_time = time
+        #     self.last_location = loc
+            
+        # if not self.integrating(time) : 
+        #     self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
+        #     things_at_location = self.world.at_location(loc) 
+        #     for t in things_at_location: 
+        #         print(t)
+        #         self.last_perception = self.last_perception + self.encode_thing(t)
                  
-        return self.last_perception
+        # return self.last_perception
     
     def integrating(self, time):
         return time < (self.integration_start_time + self.integration_time)
@@ -152,11 +169,11 @@ class VisualSystem:
         Arguments: 
         ----------
         time: Time within simulation
-        input: Convolution of relation and thing that make up a location (e.g. BESIDE*BED)
+        input: A Semantic Pointer encoding a precondition to be checked. 
         
         Returns: 
         --------
-        Bundle of states and locations of things, e.g. BOOK*OPEN + BOOK*BESIDE*BED + LIGHT*OFF
+        1 if precondition is satisfied by world state, 0 otherwise. 
         """
         return self.sense(time, input)
         
