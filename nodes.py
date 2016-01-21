@@ -113,7 +113,7 @@ class VisualSystem:
         self.THRESHOLD = 0.8
         self.last_location = None
         self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
-        self.integration_time = 0.1 #if location consistent for this long then sense
+        self.integration_time = 0.01 #if location consistent for this long then sense
         self.integration_start_time = 0 
 
         self.state_vocab = spa.Vocabulary(self.vocab.dimensions)
@@ -130,7 +130,6 @@ class VisualSystem:
             for state in states:
                 if state in state_to_key:                
                     if self.vocab[state_to_key[state]].compare(inp) > self.THRESHOLD:
-                        print 'SENSED at', time
                         return 1
         else:
             return 0
