@@ -33,7 +33,7 @@ class MotorSystem:
         self.action_time = 0.15
         self.action_start_time = -self.action_time
     
-    def act(self, time, thing, action, subject=None, place=None):
+    def act(self, time, action, subject=None, place=None):
         """
         Note: Subject and place are not used at the moment. They will probably
         be needed some day.
@@ -45,22 +45,29 @@ class MotorSystem:
         place: optional location at or to which the action is performed (semantic
             pointer, can be zero)
         """
-        
-        thing_text = get_key(self.vocab, thing, self.THRESHOLD)
-        if not thing_text == self.last_thing: 
-            self.integration_start_time = time
-            self.last_thing = thing_text             
+
+        # Temp fix while not expliciting representing objects in the model
+        action_to_thing = {'UNPLUG_KETTLE':'KETTLE',
+                           'PLUG_IN_KETTLE':'KETTLE',
+                           'PUT_KETTLE_UNDER_TAP':'KETTLE',
+                           'FILL_KETTLE_FROM_TAP':'TAP',
+                           'BOIL_KETTLE':'KETTLE'}
+
+        # thing_text = get_key(self.vocab, thing, self.THRESHOLD)
+        # if not thing_text == self.last_thing: 
+        #     self.integration_start_time = time
+        #     self.last_thing = thing_text             
         
         action_text = get_key(self.vocab, action, self.THRESHOLD)
         if not action_text == self.last_action: 
             self.integration_start_time = time
             self.last_action = action_text
         
-        if thing_text is not None and action_text is not None:
+        if action_text is not None:
 
             if not self.integrating(time) and not self.acting(time): 
-                print('performing action ' + action_text + ' with ' + thing_text)
-                self.world.do(thing_text, action_text)
+                print 'performing action ' + action_text
+                self.world.do(action_to_thing[action_text], action_text)
                 self.action_start_time = time
 
         return self.acting(time)
@@ -72,7 +79,7 @@ class MotorSystem:
     def acting(self, time):
         return time < (self.action_start_time + self.action_time)
     
-    def __call__(self, time, value):
+    def __call__(self, time, action):
         """
         Arguments: 
         ----------
@@ -84,13 +91,13 @@ class MotorSystem:
         1 if an action is in progress, 0 if not  
         """
         
-        thing = value[:self.vocab.dimensions]
-        action = value[self.vocab.dimensions:]
+        # thing = value[:self.vocab.dimensions]
+        # action = value[self.vocab.dimensions:]
         
 #         print('time: %f' % time)
 #         print(np.dot(thing, self.vocab['KETTLE'].v))
         
-        return 1 if self.act(time, thing, action) else 0 
+        return 1 if self.act(time, action) else 0 
                
         
         
@@ -103,7 +110,7 @@ class VisualSystem:
     def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
-        self.THRESHOLD = 0.6
+        self.THRESHOLD = 0.8
         self.last_location = None
         self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
         self.integration_time = 0.1 #if location consistent for this long then sense
@@ -121,10 +128,9 @@ class VisualSystem:
             states = thing.get_state().values()
             
             for state in states:
-                if state in state_to_key:
-                    print self.vocab[state_to_key[state]].compare(inp)
-                
+                if state in state_to_key:                
                     if self.vocab[state_to_key[state]].compare(inp) > self.THRESHOLD:
+                        print 'SENSED at', time
                         return 1
         else:
             return 0
@@ -161,8 +167,8 @@ class VisualSystem:
                  
         # return self.last_perception
     
-    def integrating(self, time):
-        return time < (self.integration_start_time + self.integration_time)
+    # def integrating(self, time):
+    #     return time < (self.integration_start_time + self.integration_time)
         
     def __call__(self, time, input):
         """
