@@ -122,17 +122,23 @@ class VisualSystem:
 
         key = get_key(self.vocab, inp, 0.3)
 
-        state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED','UNDER-TAP':'KETTLE_UNDER_TAP'}
+        state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
+                        'UNDER-TAP':'KETTLE_UNDER_TAP',}
 
         for thing in self.world.things: 
             states = thing.get_state().values()
-            
             for state in states:
                 if state in state_to_key:                
                     if self.vocab[state_to_key[state]].compare(inp) > self.THRESHOLD:
                         return 1
-        else:
-            return 0
+
+        for loc_set in self.world.locations.values():
+            for loc in loc_set:
+                if str(loc) in state_to_key:
+                    if self.vocab[state_to_key[str(loc)]].compare(inp) > self.THRESHOLD:
+                        return 1
+                        
+        return 0
 
 
         # if not isinstance(location, spa.pointer.SemanticPointer): 
