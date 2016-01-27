@@ -25,12 +25,12 @@ class MotorSystem:
     def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
-        self.THRESHOLD = 0.3
+        self.THRESHOLD = 0.4
         self.last_thing = None
         self.last_action = None
-        self.integration_time = 0.01 #if input consistent for this long then act
+        self.integration_time = 0.005 #if input consistent for this long then act
         self.integration_start_time = 0
-        self.action_time = 0.15
+        self.action_time = 0.1
         self.action_start_time = -self.action_time
     
     def act(self, time, action, subject=None, place=None):
@@ -99,8 +99,7 @@ class MotorSystem:
         
         return 1 if self.act(time, action) else 0 
                
-        
-        
+
 class VisualSystem:
     """
     A thing that receives location commands in the form of semantic pointers 
@@ -110,34 +109,60 @@ class VisualSystem:
     def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
-        self.THRESHOLD = 0.8
+        self.THRESHOLD = 0.5
         self.last_location = None
         self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
-        self.integration_time = 0.01 #if location consistent for this long then sense
-        self.integration_start_time = 0 
+        self.sensing = False
+        self.start_time = 0
+        self.ignore = False
+        self.ignore_start = 0
+        # self.integration_start_time = 0 
 
         self.state_vocab = spa.Vocabulary(self.vocab.dimensions)
         
     def sense(self, time, inp):
-
+        val = 5
         key = get_key(self.vocab, inp, 0.3)
 
+        interval = 0.5 if 'DONE' in self.vocab.keys else 0.05
+
         state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
-                        'UNDER-TAP':'KETTLE_UNDER_TAP',}
+                        'UNDER-TAP':'KETTLE_UNDER_TAP',
+                        'BOILED':'WATER_BOILED',
+                        'IN-KETTLE':'WATER_IN_KETTLE'}
 
-        for thing in self.world.things: 
-            states = thing.get_state().values()
-            for state in states:
-                if state in state_to_key:                
-                    if self.vocab[state_to_key[state]].compare(inp) > self.THRESHOLD:
-                        return 1
+        if self.ignore and (time > self.ignore_start + 0.35):
+            self.ignore = False
 
-        for loc_set in self.world.locations.values():
-            for loc in loc_set:
-                if str(loc) in state_to_key:
-                    if self.vocab[state_to_key[str(loc)]].compare(inp) > self.THRESHOLD:
-                        return 1
-                        
+        if self.sensing == True:
+            if time - self.start_time > interval:
+                self.sensing = False
+                print self.sensing, ' Sense State at ', time
+            return val
+
+        if not self.ignore:
+            for thing in self.world.things: 
+                states = thing.get_state().values()
+                for state in states:
+                    if state in state_to_key:                
+                        if self.vocab.parse(state_to_key[state]).compare(inp) > self.THRESHOLD:
+                            self.sensing = True
+                            self.ignore = True
+                            self.ignore_start = time
+                            print self.sensing, ' Sense State at ', time
+                            self.start_time = time
+                            return val
+
+            for loc_set in self.world.locations.values():
+                for loc in loc_set:
+                    if str(loc) in state_to_key:
+                        if self.vocab.parse(state_to_key[str(loc)]).compare(inp) > self.THRESHOLD:
+                            self.sensing = True
+                            self.ignore = True
+                            self.ignore_start = time
+                            print self.sensing, ' Sense State at ', time
+                            self.start_time = time 
+                            return val
         return 0
 
 
