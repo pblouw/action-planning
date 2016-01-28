@@ -2,11 +2,34 @@
 Created on Jun 11, 2015
 
 @author: bptripp
+
+Edits by pblouw for Cogsci paper. Note that this is currently a bit 
+of a mess, and I'm planning on cleaning it up shortly to eliminate 
+all of the code duplication etc. 
 '''
+
+
+
 
 import numpy as np
 import world
 import nengo.spa as spa
+
+
+def normalize(a): 
+    """ Normalizes a vector to length 1 (this should be done with composite HRRs.) 
+
+    Arguments: 
+    a: a vector
+    Returns:
+    aa: normalized to unit length
+    """
+    
+    result = a
+    n = np.linalg.norm(a)
+    if n > 0:
+        result = a / n
+    return result
 
 def get_key(vocab, pointer, threshold):
     key = None
@@ -15,7 +38,90 @@ def get_key(vocab, pointer, threshold):
     if similarities[ind] >= threshold:
         key = vocab.keys[ind]
     return key
+
+class CheckSystem:
+    """
+    A thing that receives location commands in the form of semantic pointers 
+    and returns the states of any objects at these locations.   
+    """
     
+    def __init__(self, vocab, world):
+        self.vocab = vocab
+        self.world = world
+        self.THRESHOLD = 0.3
+        self.last_location = None
+        self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
+        self.sensing = False
+        self.start_time = 0
+        self.ignore = False
+        self.ignore_start = 0
+        # self.integration_start_time = 0 
+
+        self.state_vocab = spa.Vocabulary(self.vocab.dimensions)
+        
+    def sense(self, time, inp):
+        val = 5
+        key = get_key(self.vocab, inp, 0.3)
+        inp = normalize(inp)
+        interval = 0.5 if 'DONE' in self.vocab.keys else 0.05
+
+
+        state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
+                        'UNDER-TAP':'KETTLE_UNDER_TAP',
+                        # 'PLUGGED_IN':'KETTLE_PLUGGED_IN',
+                        'BOILED':'WATER_BOILED',
+                        'IN-KETTLE':'WATER_IN_KETTLE'}
+
+        if self.ignore and (time > self.ignore_start + 0.35):
+            self.ignore = False
+
+        if self.sensing == True:
+            if time - self.start_time > interval:
+                self.sensing = False
+                print self.sensing, ' Sense State at ', time
+            return val
+
+        if not self.ignore:
+            for thing in self.world.things: 
+                states = thing.get_state().values()
+                for state in states:
+                    if state in state_to_key:   
+                        if self.vocab.parse(state_to_key[state]).compare(inp) > self.THRESHOLD:
+                            self.sensing = True
+                            self.ignore = True
+                            self.ignore_start = time
+                            print self.sensing, ' Sense State at ', time
+                            self.start_time = time
+                            return val
+
+
+            for loc_set in self.world.locations.values():
+                for loc in loc_set:
+                    if str(loc) in state_to_key:
+                        if self.vocab.parse(state_to_key[str(loc)]).compare(inp) > self.THRESHOLD:
+                            self.sensing = True
+                            self.ignore = True
+                            self.ignore_start = time
+                            print self.sensing, ' Sense State at ', time
+                            self.start_time = time 
+                            return val
+        return 0
+    
+
+    def __call__(self, time, input):
+        """
+        Arguments: 
+        ----------
+        time: Time within simulation
+        input: A Semantic Pointer encoding a precondition to be checked. 
+        
+        Returns: 
+        --------
+        1 if precondition is satisfied by world state, 0 otherwise. 
+        """
+        return self.sense(time, input)
+        
+
 class MotorSystem:
     """
     A thing that receives action commands in the form of semantic pointers and 
@@ -25,12 +131,12 @@ class MotorSystem:
     def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
-        self.THRESHOLD = 0.3
+        self.THRESHOLD = 0.4
         self.last_thing = None
         self.last_action = None
-        self.integration_time = 0.01 #if input consistent for this long then act
+        self.integration_time = 0.005 #if input consistent for this long then act
         self.integration_start_time = 0
-        self.action_time = 0.15
+        self.action_time = 0.1
         self.action_start_time = -self.action_time
     
     def act(self, time, action, subject=None, place=None):
@@ -99,8 +205,7 @@ class MotorSystem:
         
         return 1 if self.act(time, action) else 0 
                
-        
-        
+
 class VisualSystem:
     """
     A thing that receives location commands in the form of semantic pointers 
@@ -110,34 +215,79 @@ class VisualSystem:
     def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
-        self.THRESHOLD = 0.8
+        self.THRESHOLD = 0.3
         self.last_location = None
         self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
-        self.integration_time = 0.01 #if location consistent for this long then sense
-        self.integration_start_time = 0 
+        self.sensing = False
+        self.start_time = 0
+        self.ignore = False
+        self.ignore_start = 0
+        # self.integration_start_time = 0 
 
         self.state_vocab = spa.Vocabulary(self.vocab.dimensions)
         
     def sense(self, time, inp):
-
+        val = 5
         key = get_key(self.vocab, inp, 0.3)
+        inp = normalize(inp)
+        interval = 0.5 if 'DONE' in self.vocab.keys else 0.05
 
-        state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
-                        'UNDER-TAP':'KETTLE_UNDER_TAP',}
+        state_to_key = {'UNPLUGGED':'PUT_KETTLE_UNDER_TAP',
+                        'UNDER-TAP':'FILL_KETTLE_FROM_TAP',
+                        # 'PLUGGED_IN':'KETTLE_PLUGGED_IN',
+                        'IN-KETTLE':'PLUG_IN_KETTLE'}
 
-        for thing in self.world.things: 
-            states = thing.get_state().values()
-            for state in states:
-                if state in state_to_key:                
-                    if self.vocab[state_to_key[state]].compare(inp) > self.THRESHOLD:
-                        return 1
+        # state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
+        #                 'UNDER-TAP':'KETTLE_UNDER_TAP',
+        #                 # 'PLUGGED_IN':'KETTLE_PLUGGED_IN',
+        #                 'BOILED':'WATER_BOILED',
+        #                 'IN-KETTLE':'WATER_IN_KETTLE'}
 
-        for loc_set in self.world.locations.values():
-            for loc in loc_set:
-                if str(loc) in state_to_key:
-                    if self.vocab[state_to_key[str(loc)]].compare(inp) > self.THRESHOLD:
-                        return 1
-                        
+        if self.ignore and (time > self.ignore_start + 0.35):
+            self.ignore = False
+
+        if self.sensing == True:
+            if time - self.start_time > interval:
+                self.sensing = False
+                print self.sensing, ' Sense State at ', time
+            return val
+
+        if not self.ignore:
+            for thing in self.world.things: 
+                states = thing.get_state().values()
+                for state in states:
+                    if state in state_to_key:   
+                        if state == 'PLUGGED_IN' and 'IN-KETTLE' in states:
+                            vec = self.vocab.parse('BOIL_KETTLE')
+                            if vec.compare(inp) > self.THRESHOLD:
+                                print vec.compare(inp)
+                                self.sensing = True
+                                self.ignore = True
+                                self.ignore_start = time
+                                print self.sensing, ' Sense State at ', time
+                                self.start_time = time
+                                return val
+
+                        else:
+                             if self.vocab.parse(state_to_key[state]).compare(inp) > self.THRESHOLD:
+                                self.sensing = True
+                                self.ignore = True
+                                self.ignore_start = time
+                                print self.sensing, ' Sense State at ', time
+                                self.start_time = time
+                                return val
+
+
+            for loc_set in self.world.locations.values():
+                for loc in loc_set:
+                    if str(loc) in state_to_key:
+                        if self.vocab.parse(state_to_key[str(loc)]).compare(inp) > self.THRESHOLD:
+                            self.sensing = True
+                            self.ignore = True
+                            self.ignore_start = time
+                            print self.sensing, ' Sense State at ', time
+                            self.start_time = time 
+                            return val
         return 0
 
 
