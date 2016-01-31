@@ -44,8 +44,7 @@ class CheckSystem:
     and returns the states of any objects at these locations.   
     """
     
-    def __init__(self, vocab, world, trial):
-        self.trial = trial
+    def __init__(self, vocab, world):
 
         self.vocab = vocab
         self.world = world
@@ -66,16 +65,6 @@ class CheckSystem:
         inp = normalize(inp)
         interval = 5 if 'DONE' in self.vocab.keys else 0.05
 
-
-        def write_to_log(goal_log_name, time_log_name):
-            goal_log = np.load(goal_log_name)
-            time_log = np.load(time_log_name)
-
-            goal_log[self.trial] = 1 
-            time_log[self.trial] = time
-
-            np.save('goal_log.npy', goal_log)
-            np.save('time_log.npy', time_log)
 
 
         state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
@@ -104,7 +93,6 @@ class CheckSystem:
                             self.ignore_start = time
                             print self.sensing, ' Sense State at ', time
                             self.start_time = time
-                            write_to_log('goal_log.npy','time_log.npy')
                             return val
 
 
@@ -117,7 +105,6 @@ class CheckSystem:
                             self.ignore_start = time
                             print self.sensing, ' Sense State at ', time
                             self.start_time = time 
-                            write_to_log('goal_log.npy','time_log.npy')
                             return val
         return 0
     
@@ -142,8 +129,7 @@ class MotorSystem:
     tries to perform these actions in the World. 
     """
     
-    def __init__(self, vocab, world, trial):
-        self.trial = trial
+    def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
         self.THRESHOLD = 0.4
@@ -169,8 +155,6 @@ class MotorSystem:
         place: optional location at or to which the action is performed (semantic
             pointer, can be zero)
         """
-
-        # Temp fix while not expliciting representing objects in the model
         actions = ['FILL_KETTLE_FROM_TAP', 'PUT_KETTLE_UNDER_TAP', 'BOIL_KETTLE', 'PLUG_IN_KETTLE','UNPLUG_KETTLE']
 
         action_to_thing = {'UNPLUG_KETTLE':'KETTLE',
@@ -178,17 +162,7 @@ class MotorSystem:
                            'PUT_KETTLE_UNDER_TAP':'KETTLE',
                            'FILL_KETTLE_FROM_TAP':'TAP',
                            'BOIL_KETTLE':'KETTLE'}
-
-        def write_to_log(stack_log_name):
-            stack_log = np.load(stack_log_name)
-            stack_log[self.trial, self.n] += 1
-
-            np.save('stack_log.npy', stack_log)
-
-        # thing_text = get_key(self.vocab, thing, self.THRESHOLD)
-        # if not thing_text == self.last_thing: 
-        #     self.integration_start_time = time
-        #     self.last_thing = thing_text             
+      
         
         action_text = get_key(self.vocab, action, self.THRESHOLD)
         if action_text not in actions:
@@ -203,16 +177,6 @@ class MotorSystem:
             if not self.integrating(time) and not self.acting(time): 
                 print 'performing action ' + action_text
                 self.world.do(action_to_thing[action_text], action_text)
-                
-
-                if self.last_action_time == None:
-                    self.last_action_time = time 
-                if time - self.last_action_time > 0.2:
-                    self.n += 1
-
-                write_to_log('stack_log.npy')
-                self.last_action_time = time
-
                 self.action_start_time = time
 
         return self.acting(time)
@@ -238,10 +202,7 @@ class MotorSystem:
         
         # thing = value[:self.vocab.dimensions]
         # action = value[self.vocab.dimensions:]
-        
-#         print('time: %f' % time)
-#         print(np.dot(thing, self.vocab['KETTLE'].v))
-        
+          
         return 1 if self.act(time, action) else 0 
                
 
