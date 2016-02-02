@@ -79,7 +79,7 @@ class CheckSystem:
         if self.sensing == True:
             if time - self.start_time > interval:
                 self.sensing = False
-                print self.sensing, ' Sense State at ', time
+                # print self.sensing, ' Sense State at ', time
             return val
 
         if not self.ignore:
@@ -91,7 +91,7 @@ class CheckSystem:
                             self.sensing = True
                             self.ignore = True
                             self.ignore_start = time
-                            print self.sensing, ' Sense State at ', time
+                            # print self.sensing, ' Sense State at ', time
                             self.start_time = time
                             return val
 
@@ -103,7 +103,7 @@ class CheckSystem:
                             self.sensing = True
                             self.ignore = True
                             self.ignore_start = time
-                            print self.sensing, ' Sense State at ', time
+                            # print self.sensing, ' Sense State at ', time
                             self.start_time = time 
                             return val
         return 0
@@ -248,7 +248,7 @@ class VisualSystem:
         if self.sensing == True:
             if time - self.start_time > interval:
                 self.sensing = False
-                print self.sensing, ' Sense State at ', time
+                # print self.sensing, ' Sense State at ', time
             return val
 
         if not self.ignore:
@@ -263,7 +263,7 @@ class VisualSystem:
                                     self.sensing = True
                                     self.ignore = True
                                     self.ignore_start = time
-                                    print self.sensing, ' Sense State at ', time
+                                    # print self.sensing, ' Sense State at ', time
                                     self.start_time = time
                                     return val
                         except:
@@ -275,7 +275,7 @@ class VisualSystem:
                             self.sensing = True
                             self.ignore = True
                             self.ignore_start = time
-                            print self.sensing, ' Sense State at ', time
+                            # print self.sensing, ' Sense State at ', time
                             self.start_time = time
                             return val
 
@@ -286,7 +286,7 @@ class VisualSystem:
                             self.sensing = True
                             self.ignore = True
                             self.ignore_start = time
-                            print self.sensing, ' Sense State at ', time
+                            # print self.sensing, ' Sense State at ', time
                             self.start_time = time 
                             return val
 

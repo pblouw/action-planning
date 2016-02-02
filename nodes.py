@@ -74,8 +74,8 @@ class CheckSystem:
             goal_log[self.trial] = 1 
             time_log[self.trial] = time
 
-            np.save('goal_log.npy', goal_log)
-            np.save('time_log.npy', time_log)
+            np.save('2_goal_log.npy', goal_log)
+            np.save('2_time_log.npy', time_log)
 
 
         state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
@@ -104,7 +104,7 @@ class CheckSystem:
                             self.ignore_start = time
                             print self.sensing, ' Sense State at ', time
                             self.start_time = time
-                            write_to_log('goal_log.npy','time_log.npy')
+                            write_to_log('2_goal_log.npy','2_time_log.npy')
                             return val
 
 
@@ -117,7 +117,7 @@ class CheckSystem:
                             self.ignore_start = time
                             print self.sensing, ' Sense State at ', time
                             self.start_time = time 
-                            write_to_log('goal_log.npy','time_log.npy')
+                            write_to_log('2_goal_log.npy','2_time_log.npy')
                             return val
         return 0
     
@@ -183,7 +183,7 @@ class MotorSystem:
             stack_log = np.load(stack_log_name)
             stack_log[self.trial, self.n] += 1
 
-            np.save('stack_log.npy', stack_log)
+            np.save('2_stack_log.npy', stack_log)
 
         # thing_text = get_key(self.vocab, thing, self.THRESHOLD)
         # if not thing_text == self.last_thing: 
@@ -210,7 +210,7 @@ class MotorSystem:
                 if time - self.last_action_time > 0.2:
                     self.n += 1
 
-                write_to_log('stack_log.npy')
+                write_to_log('2_stack_log.npy')
                 self.last_action_time = time
 
                 self.action_start_time = time
