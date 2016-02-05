@@ -13,7 +13,7 @@ total_goals = 1000
 total_things = 25000
 total_actions = 10000
 total_effects = 2500
-n_queries = 100
+n_queries = 500
 
 def make_base_vectors(D):
     keys = hrr.CleanupMemory(['LOCATION', 'GOAL', 'EFFECT', 'THING'], D)
@@ -187,6 +187,8 @@ def affordance_query(mean_locations, mean_goals, D):
     affordance_matches = []
     affordance_partial_matches = []
     affordance_non_matches = []
+    all_inner_products = []
+    all_matching_thing_indices = []
     for i in range(n_queries):
         location_index = np.random.randint(0, total_locations)
         goal_index = np.random.randint(0, total_goals)
@@ -204,8 +206,25 @@ def affordance_query(mean_locations, mean_goals, D):
             else:
                 thing_non_matches.append(inner_products[j])
 
+        all_inner_products.append(inner_products)
+        all_matching_thing_indices.append(matching_thing_indices)
+
+    threshold = get_threshold(thing_matches)
+    print(thing_matches)
+    print('threshold ' + str(threshold))
+
+    for i in range(n_queries):
+        print(i)
+        matching_thing_indices = all_matching_thing_indices[i]
+        print(matching_thing_indices)
+
         #choose an affordance of a thing in our list, and query for it by thing and effect
+        suprathreshold_thing_indices = np.argwhere(all_inner_products[i]>=threshold).squeeze().tolist()
+        if isinstance(suprathreshold_thing_indices, int):
+            suprathreshold_thing_indices = [suprathreshold_thing_indices]
+
         for thing_index in matching_thing_indices:
+        # for thing_index in suprathreshold_thing_indices:
             effect_index = None
             for affordance_index in range(total_actions):
                 if thing_index in affordances.thing_indices[affordance_index]:
@@ -213,8 +232,10 @@ def affordance_query(mean_locations, mean_goals, D):
                         effect_index = affordances.effect_indices[affordance_index][0]
                         break
             if effect_index is not None:
-                #TODO: use result of thing query and check results against correct thing and effect indices
-                query = make_affordance(things, effects, keys, matching_thing_indices, [effect_index])
+                print('matching effect')
+                #use result of thing query and check results against correct thing and effect indices
+                # query = make_affordance(things, effects, keys, matching_thing_indices, [effect_index])
+                query = make_affordance(things, effects, keys, suprathreshold_thing_indices, [effect_index])
 
                 inner_products = np.dot(affordances.vectors.T, query)
                 for j in range(total_actions):
@@ -227,15 +248,6 @@ def affordance_query(mean_locations, mean_goals, D):
                     else:
                         affordance_non_matches.append(inner_products[j])
                 break
-
-    # plt.figure()
-    # plt.subplot(311)
-    # plt.hist(affordance_non_matches)
-    # plt.subplot(312)
-    # plt.hist(affordance_partial_matches)
-    # plt.subplot(313)
-    # plt.hist(affordance_matches)
-    # plt.show()
 
     return thing_matches, thing_partial_matches, thing_non_matches, affordance_matches, affordance_partial_matches, affordance_non_matches
 
@@ -276,7 +288,7 @@ def action_query(mean_locations, D):
 def get_hits_per_query(matches):
     return float(len(matches)) / n_queries
 
-def get_precision(matches, partial_matches, non_matches):
+def get_threshold(matches):
     sorted = np.sort(matches)
     n = len(matches)
     if n == 0:
@@ -284,8 +296,13 @@ def get_precision(matches, partial_matches, non_matches):
 
     threshold_index = int(np.floor(n/10.))
     threshold = sorted[threshold_index]
+    return threshold
+
+def get_precision(matches, partial_matches, non_matches):
+    threshold = get_threshold(matches)
     false_alarms = np.bincount(np.array(non_matches > threshold), minlength=2) + np.bincount(np.array(partial_matches > threshold), minlength=2)
-    print('threshold ' + str(threshold_index) + ' ' + str(threshold) + ' false alarms' + str(false_alarms))
+    print('threshold ' + str(threshold) + ' false alarms' + str(false_alarms))
+    n = len(matches)
     return float(n) / (n + false_alarms[1])
 
 # # example histogram ...
@@ -330,7 +347,13 @@ for dimension in dimension_list:
         # matches, partial_matches, non_matches = thing_query(mean_locations, mean_goals, dimension)
         if do_affordance:
             matches, partial_matches, non_matches, affordance_matches, affordance_partial_matches, affordance_non_matches = affordance_query(mean_locations, mean_goals, dimension)
-            precision_affordance.append(get_precision(affordance_matches, affordance_partial_matches, affordance_non_matches))
+            print(len(affordance_matches))
+            print(len(affordance_non_matches))
+            print(len(affordance_partial_matches))
+            if len(affordance_matches) > 0:
+                precision_affordance.append(get_precision(affordance_matches, affordance_partial_matches, affordance_non_matches))
+            else:
+                precision_affordance.append(None)
         else:
             matches, partial_matches, non_matches = action_query(mean_locations, dimension)
         hits.append(get_hits_per_query(matches))
@@ -345,7 +368,7 @@ all_precision_affordance = np.array(all_precision_affordance)
 
 import cPickle
 if do_affordance:
-    file = open('./action-analysis-affordance3.pkl', 'wb')
+    file = open('./action-analysis-affordance4.pkl', 'wb')
 else:
     file = open('./action-analysis-action.pkl', 'wb')
 cPickle.dump((mean_locations_list, all_hits_per_query, all_precision, all_precision_affordance), file)
@@ -378,27 +401,27 @@ print(all_precision_affordance)
 # plt.legend(['250D', '500D', '1000D'], loc=3)
 # plt.show()
 
-# # plot hits and precision ...
-# file = open('./action-analysis-affordance.pkl', 'rb')
-# mean_locations_list, all_hits_per_query, all_precision, all_precision_affordance = cPickle.load(file)
-# file.close()
-# plt.figure()
-# p = plt.subplot(3,1,1)
-# plt.plot(mean_locations_list, np.mean(all_hits_per_query, axis=0))
-# p.tick_params(axis='x', which='both', labelbottom='off')
-# p.tick_params(axis='y', which='both', labelsize=14)
-# plt.ylabel('mean objects', fontsize=16)
-# p = plt.subplot(3,1,2)
-# plt.plot(mean_locations_list, all_precision.T)
-# p.tick_params(axis='x', which='both', labelbottom='off')
-# p.tick_params(axis='y', which='both', labelsize=14)
-# plt.ylabel('object precision', fontsize=16)
-# plt.ylim((0, 1.02))
-# p = plt.subplot(3,1,3)
-# plt.plot(mean_locations_list, all_precision_affordance.T)
-# p.tick_params(axis='both', which='both', labelsize=14)
-# plt.ylabel('action precision', fontsize=16)
-# plt.xlabel('mean # locations & goals per object', fontsize=16)
-# plt.ylim((0, 1.02))
-# plt.legend(['250D', '500D', '1000D'], loc=3)
-# plt.show()
+# plot hits and precision ...
+file = open('./action-analysis-affordance4.pkl', 'rb')
+mean_locations_list, all_hits_per_query, all_precision, all_precision_affordance = cPickle.load(file)
+file.close()
+plt.figure()
+p = plt.subplot(3,1,1)
+plt.plot(mean_locations_list, np.mean(all_hits_per_query, axis=0))
+p.tick_params(axis='x', which='both', labelbottom='off')
+p.tick_params(axis='y', which='both', labelsize=14)
+plt.ylabel('mean objects', fontsize=16)
+p = plt.subplot(3,1,2)
+plt.plot(mean_locations_list, all_precision.T)
+p.tick_params(axis='x', which='both', labelbottom='off')
+p.tick_params(axis='y', which='both', labelsize=14)
+plt.ylabel('object precision', fontsize=16)
+plt.ylim((0, 1.02))
+p = plt.subplot(3,1,3)
+plt.plot(mean_locations_list, all_precision_affordance.T)
+p.tick_params(axis='both', which='both', labelsize=14)
+plt.ylabel('action precision', fontsize=16)
+plt.xlabel('mean # locations & goals per object', fontsize=16)
+plt.ylim((0, 1.02))
+plt.legend(['250D', '500D', '1000D'], loc=3)
+plt.show()
