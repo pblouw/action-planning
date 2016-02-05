@@ -26,7 +26,7 @@ with model:
     # note: watch these aren't exactly the same, or add something else to make the object concepts unique
     vocab.add('KETTLE', vocab.parse('.707*(LOCATION*KITCHEN+LOCATION*STAFF_LOUNGE+LOCATION*HOME_DEPOT+GOAL*WATER_BOILED)'))
     vocab.add('TAP', vocab.parse('.707*(LOCATION*KITCHEN+LOCATION*STAFF_LOUNGE+GOAL*WATER_BOILED)'))
-    vocab.add('DRILL', vocab.parse('.707*(LOCATION*GARAGE+LOCATION+HOME_DEPOT+GOAL*HOLE_MADE)'))
+    vocab.add('DRILL', vocab.parse('.707*(LOCATION*GARAGE+GOAL*HOLE_MADE)'))
 
     vocab.add('BOIL_KETTLE', vocab.parse('.707*(OBJECT*KETTLE+EFFECTS*WATER_BOILED)'))
     vocab.add('UNPLUG_KETTLE', vocab.parse('.707*(OBJECT*KETTLE+EFFECTS*KETTLE_UNPLUGGED)'))
@@ -34,6 +34,12 @@ with model:
     vocab.add('FILL_KETTLE_FROM_TAP', vocab.parse('.707*(OBJECT*TAP+EFFECTS*WATER_IN_KETTLE)'))
     vocab.add('PUT_KETTLE_UNDER_TAP', vocab.parse('.707*(OBJECT*KETTLE+EFFECTS*KETTLE_UNDER_TAP)'))
 
+    out_vocab = spa.vocab.Vocabulary(D)
+    out_vocab.parse('BOIL_KETTLE')
+    out_vocab.parse('UNPLUG_KETTLE')
+    out_vocab.parse('PLUG_IN_KETTLE')
+    out_vocab.parse('FILL_KETTLE_FROM_TAP')
+    out_vocab.parse('PUT_KETTLE_UNDER_TAP')
     # Testing cleanups:
     # 1) goal+location->things
     # 2) things+intention->action
@@ -42,12 +48,15 @@ with model:
     model.intention = spa.Buffer(D, vocab=vocab)
     model.location = spa.Buffer(D, vocab=vocab)
 
-    model.things = spa.AssociativeMemory(vocab, wta_output=False, threshold=.5, n_neurons_per_ensemble=100) #this can't be called objects
-    model.action = spa.AssociativeMemory(vocab, wta_output=True, n_neurons_per_ensemble=100)
+    model.things = spa.AssociativeMemory(vocab, wta_output=False, threshold=.5) #this can't be called objects
+    model.action = spa.AssociativeMemory(input_vocab=vocab, output_vocab=out_vocab, 
+                                         input_keys=['BOIL_KETTLE','UNPLUG_KETTLE','PLUG_IN_KETTLE','FILL_KETTLE_FROM_TAP','PUT_KETTLE_UNDER_TAP'],
+                                         output_keys=['BOIL_KETTLE','UNPLUG_KETTLE','PLUG_IN_KETTLE','FILL_KETTLE_FROM_TAP','PUT_KETTLE_UNDER_TAP'],
+                                         wta_output=True, wta_inhibit_scale=5, threshold=.7)
 
     cortical_actions = spa.Actions(
-        'things = (LOCATION*location+GOAL*goal)*.5',
-        'action = (OBJECT*things+EFFECTS*intention)*.5'
+        'things = (location*LOCATION)+(goal*GOAL)',
+        'action = (OBJECT*things)+(EFFECTS*intention)'
     )
     model.cortical = spa.Cortical(cortical_actions)
 
@@ -56,7 +65,7 @@ with model:
     model.goal_inp = spa.Input(goal=set_goal)
 
     def set_location(t):
-        if t < 0.5: return 'KITCHEN'
+        if t < 1: return 'KITCHEN'
         else: return 'GARAGE'
     model.loc_inp = spa.Input(location=set_location)
 
@@ -67,10 +76,10 @@ with model:
 
     things_probe = nengo.Probe(model.things.output, synapse=0.03)
     action_probe = nengo.Probe(model.action.output, synapse=0.03)
-
+    intention_probe = nengo.Probe(model.intention.state.output, synapse=0.03)
 
 def plot_results(sim):
-    fig = plt.figure(figsize=(16,8))
+    fig = plt.figure(figsize=(12,6))
 
     p1 = fig.add_subplot(3,1,1)
     p1.plot(sim.trange(), model.similarity(sim.data, things_probe))
@@ -78,13 +87,17 @@ def plot_results(sim):
 
     p2 = fig.add_subplot(3,1,2)
     p2.plot(sim.trange(), model.similarity(sim.data, action_probe))
-    p2.legend(model.get_output_vocab('goal').keys, fontsize='medium', bbox_to_anchor=(1, -0.15), ncol=6)
     p2.set_ylabel('Action')
+
+    p3 = fig.add_subplot(3,1,3)
+    p3.plot(sim.trange(), model.similarity(sim.data, intention_probe))
+    p3.legend(model.get_output_vocab('intention').keys, fontsize='small', bbox_to_anchor=(1, -0.15), ncol=10)
+    p3.set_ylabel('Intention')
 
     plt.show()
 
 sim = nengo.Simulator(model)
 sim.reset()
-sim.run(1)
+sim.run(1.5)
 plot_results(sim)
 

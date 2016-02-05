@@ -32,14 +32,14 @@ with model:
     model.things = spa.Buffer(D, vocab=vocab)
     # model.state = spa.Memory(D, vocab=vocab)
     model.state = spa.Buffer(D, vocab=vocab)
-    model.immediate_goal = spa.AssociativeMemory(vocab, wta_output=True, n_neurons_per_ensemble=50)
-    model.template = spa.AssociativeMemory(vocab, wta_output=True, n_neurons_per_ensemble=50)
+    model.immediate_goal = spa.AssociativeMemory(vocab, wta_output=True)
+    model.template = spa.AssociativeMemory(vocab, wta_output=True)
     # model.precond = spa.Buffer(D, vocab=vocab)
     # model.effects = spa.Buffer(D, vocab=vocab)
-    model.precond = spa.AssociativeMemory(vocab, wta_output=True, n_neurons_per_ensemble=100)
-    model.effects = spa.AssociativeMemory(vocab, wta_output=True, n_neurons_per_ensemble=50)
+    model.precond = spa.AssociativeMemory(vocab, wta_output=True)
+    model.effects = spa.AssociativeMemory(vocab, wta_output=True)
     model.action = spa.Buffer(D, vocab=vocab)
-    model.thing = spa.AssociativeMemory(vocab, wta_output=True, n_neurons_per_ensemble=50)
+    model.thing = spa.AssociativeMemory(vocab, wta_output=True)
     model.acting = spa.Buffer(D, vocab=vocab)
 
     
@@ -75,7 +75,9 @@ with model:
     nengo.Connection(model.motor, model.acting.state.input, transform=vocab.parse('ACTING').v[:,np.newaxis])
     
     
-    
+sim = nengo.Simulator(model)
+
+sim.run(1)
     
     
     

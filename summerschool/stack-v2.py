@@ -18,9 +18,9 @@ vocab['INDEX'].make_unitary()
 with model:
     model.prompt = spa.Buffer(dimensions=D, vocab=vocab)
     model.state = spa.Buffer(dimensions=D, vocab=vocab)
-    model.push = spa.Memory(dimensions=D, subdimensions=8, neurons_per_dimension=100, vocab=vocab, synapse=0.01)
-    model.stack = spa.Memory(dimensions=D, subdimensions=8, neurons_per_dimension=100, vocab=vocab, synapse=0.01)
-    model.top = spa.Memory(dimensions=D, subdimensions=8, neurons_per_dimension=100, vocab=vocab, synapse=0.01, tau=0.05)
+    model.push = spa.Memory(dimensions=D, subdimensions=8, neurons_per_dimension=50, vocab=vocab, synapse=0.01)
+    model.stack = spa.Memory(dimensions=D, subdimensions=8, neurons_per_dimension=50, vocab=vocab, synapse=0.01)
+    model.top = spa.Memory(dimensions=D, subdimensions=8, neurons_per_dimension=50, vocab=vocab, synapse=0.01, tau=0.05)
     model.clean = spa.AssociativeMemory(vocab, threshold=0.15)
 
     actions = spa.Actions(
