@@ -3,9 +3,7 @@ Created on Jun 11, 2015
 
 @author: bptripp
 
-Edits by pblouw for Cogsci paper. Note that this is currently a bit 
-of a mess, and I'm planning on cleaning it up shortly to eliminate 
-all of the code duplication etc. 
+Edits by pblouw for Cogsci paper. 
 '''
 
 import numpy as np
@@ -37,87 +35,6 @@ def get_key(vocab, pointer, threshold):
     if similarities[ind] >= threshold:
         key = vocab.keys[ind]
     return key
-
-
-class CheckSystem:
-    """
-    A thing that receives location commands in the form of semantic pointers 
-    and returns the states of any objects at these locations.   
-    """
-    
-    def __init__(self, vocab, world):
-
-        self.vocab = vocab
-        self.world = world
-        self.threshold = 0.3
-        self.last_location = None
-        self.last_perception = spa.pointer.SemanticPointer(np.zeros(self.vocab.dimensions))
-        self.sensing = False
-        self.start_time = 0
-        self.ignore = False
-        self.ignore_start = 0
-
-        self.state_vocab = spa.Vocabulary(self.vocab.dimensions)
-        
-    def sense(self, time, inp):
-        val = 5
-        key = get_key(self.vocab, inp, 0.3)
-        inp = normalize(inp)
-        interval = 5 if 'DONE' in self.vocab.keys else 0.05
-
-
-
-        state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
-                        'UNDER-TAP':'KETTLE_UNDER_TAP',
-                        'BOILED':'WATER_BOILED',
-                        'IN-KETTLE':'WATER_IN_KETTLE'}
-
-        if self.ignore and (time > self.ignore_start + 5):
-            self.ignore = False
-
-        if self.sensing == True:
-            if time - self.start_time > interval:
-                self.sensing = False
-            return val
-
-        if not self.ignore:
-            for thing in self.world.things: 
-                states = thing.get_state().values()
-                for state in states:
-                    if state in state_to_key:   
-                        if self.vocab.parse(state_to_key[state]).compare(inp) > self.threshold:
-                            self.sensing = True
-                            self.ignore = True
-                            self.ignore_start = time
-                            self.start_time = time
-                            return val
-
-
-            for loc_set in self.world.locations.values():
-                for loc in loc_set:
-                    if str(loc) in state_to_key:
-                        if self.vocab.parse(state_to_key[str(loc)]).compare(inp) > self.threshold:
-                            self.sensing = True
-                            self.ignore = True
-                            self.ignore_start = time
-                            # print self.sensing, ' Sense State at ', time
-                            self.start_time = time 
-                            return val
-        return 0
-    
-
-    def __call__(self, time, input):
-        """
-        Arguments: 
-        ----------
-        time: Time within simulation
-        input: A Semantic Pointer encoding a precondition to be checked. 
-        
-        Returns: 
-        --------
-        1 if precondition is satisfied by world state, 0 otherwise. 
-        """
-        return self.sense(time, input)
 
 
 class MotorSystem:
@@ -199,11 +116,6 @@ class VisualSystem:
     the system is used to check whether an action's preconditions are satisfied, or
     whether the main goal is satisfied.
     """
-    state_to_key = {'UNPLUGGED':'PUT_KETTLE_UNDER_TAP',
-                    'UNDER-TAP':'FILL_KETTLE_FROM_TAP',
-                    'PLUGGED_IN':'UNPLUG_KETTLE',
-                    'IN-KETTLE':'PLUG_IN_KETTLE'}
-
     def __init__(self, vocab, world):
         self.vocab = vocab
         self.world = world
@@ -215,13 +127,22 @@ class VisualSystem:
         self.ignore = False
         self.ignore_start = 0
 
-        self.state_vocab = spa.Vocabulary(self.vocab.dimensions)
+        if 'DONE' in self.vocab.keys:
+            self.state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
+                                 'UNDER-TAP':'KETTLE_UNDER_TAP',
+                                 'BOILED':'WATER_BOILED',
+                                 'IN-KETTLE':'WATER_IN_KETTLE'}
+        else:
+            self.state_to_key = {'UNPLUGGED':'PUT_KETTLE_UNDER_TAP',
+                                 'UNDER-TAP':'FILL_KETTLE_FROM_TAP',
+                                 'PLUGGED_IN':'UNPLUG_KETTLE',
+                                 'IN-KETTLE':'PLUG_IN_KETTLE'}
         
     def sense(self, time, inp):
         val = 5
         key = get_key(self.vocab, inp, self.threshold)
         inp = normalize(inp)
-        interval = 0.5 if 'DONE' in self.vocab.keys else 0.05
+        interval = 5 if 'DONE' in self.vocab.keys else 0.05
 
         # Stop ignoring 350ms after ignoring is triggered
         if self.ignore and (time > self.ignore_start + self.threshold):
@@ -244,8 +165,8 @@ class VisualSystem:
                             self.initialize_start_flags(time)
                             return val
 
-                    if state in state_to_key: 
-                        hrr = self.vocab.parse(state_to_key[state])
+                    if state in self.state_to_key: 
+                        hrr = self.vocab.parse(self.state_to_key[state])
                         if hrr.compare(inp) > self.threshold:
                             self.initialize_start_flags(time)
                             return val
@@ -253,8 +174,8 @@ class VisualSystem:
             # Check location-based preconditions  
             for loc_set in self.world.locations.values():
                 for loc in loc_set:
-                    if str(loc) in state_to_key:
-                        hrr = self.vocab.parse(state_to_key[str(loc)])
+                    if str(loc) in self.state_to_key:
+                        hrr = self.vocab.parse(self.state_to_key[str(loc)])
                         if hrr.compare(inp) > self.threshold:
                             self.initialize_start_flags(time)
                             return val
