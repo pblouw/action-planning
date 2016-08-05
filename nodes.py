@@ -117,7 +117,7 @@ class VisualSystem:
     the system is used to check whether an action's preconditions are satisfied, or
     whether the main goal is satisfied.
     """
-    def __init__(self, vocab, world, trial=0):
+    def __init__(self, vocab, world, trial=0, logging=False):
         self.vocab = vocab
         self.world = world
         self.threshold = 0.3
@@ -127,6 +127,7 @@ class VisualSystem:
         self.ignore = False
         self.ignore_start = 0
         self.trial = trial
+        self.logging = logging
 
         if 'DONE' in self.vocab.keys:
             self.state_to_key = {'UNPLUGGED':'KETTLE_UNPLUGGED',
@@ -198,7 +199,7 @@ class VisualSystem:
         self.ignore = True
         self.ignore_start = time
         self.start_time = time 
-        if 'DONE' in self.vocab.keys:
+        if 'DONE' in self.vocab.keys and self.logging:
             self.write_to_log('2_goal_log.npy','2_time_log.npy', time)
 
     def write_to_log(self, goal_log_name, time_log_name, time):

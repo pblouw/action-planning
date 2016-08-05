@@ -11,32 +11,12 @@ trials = 50
 
 goal_logger = np.zeros(trials)
 time_logger = np.zeros(trials)
-stack_logger = np.zeros((trials, 15))
 
 np.save('2_goal_log.npy', goal_logger)
 np.save('2_time_log.npy', time_logger)
-np.save('2_stack_log.npy', stack_logger)
 
 np.random.seed(1556)
 
-
-# def permutations(word):
-#     if len(word)<=1:
-#         return [word]
-
-#     #get all permutations of length N-1
-#     perms=permutations(word[1:])
-#     char=word[0]
-#     result=[]
-#     #iterate over all permutations of length N-1
-#     for perm in perms:
-#         #insert the character into every possible location
-#         for i in range(len(perm)+1):
-#             result.append(perm[:i] + char + perm[i:])
-#     return result
-
-# items = permutations('ABCDEFG')
-# print len(items)
 
 for _ in range(trials):
     world = kitchen.get_kitchen()
@@ -45,12 +25,10 @@ for _ in range(trials):
     # world.do('TAP', 'FILL_KETTLE_FROM_TAP')
     world.print_state()
 
-
     D = 256
 
     base_items= ['LOCATION','GOAL','GARAGE','HOLE_MADE','STAFF_LOUNGE','WATER_BOILED','KITCHEN','HOME_DEPOT',
                  'KETTLE_UNPLUGGED','KETTLE_PLUGGED_IN','WATER_IN_KETTLE','KETTLE_UNDER_TAP','EFFECTS','OBJECT']
-    # base_items += items
 
     objects = ['DRILL','KETTLE','TAP']
     actions = ['FILL_KETTLE_FROM_TAP', 'PUT_KETTLE_UNDER_TAP', 'BOIL_KETTLE', 'PLUG_IN_KETTLE','UNPLUG_KETTLE']
