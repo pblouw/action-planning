@@ -234,10 +234,10 @@ for _ in range(trials):
     sim = nengo.Simulator(model)
     sim.run(4)
 
-    print 'AFTER: '
+    print('AFTER: ')
     world.print_state()
 
-    print ''
-    print 'On Trial:'
-    print _
-    print ''
+    print('')
+    print('On Trial:')
+    print() _
+    print('')

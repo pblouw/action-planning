@@ -1,1 +1,3 @@
 This repository contains material for a submission to the 2016 Conference of the Cognitive Science Society. To run an implementation of this model, clone the repository and open the ipython (i.e. Jupyter) notebook labelled 'ActionPlanner-Cogsci2016' (you will need ipython installed to do this). Then, running all of the cells in the notebook will simulate the model for one trial (nengo and matplotlib need to be installed in order for the simulation to run properly). See https://github.com/nengo/nengo/ for instructions on installing nengo. 
+
+Simulations are tested to run on Python 3

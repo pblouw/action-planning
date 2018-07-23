@@ -165,7 +165,7 @@ class World(object):
                 break
             
         if method is not None: 
-            arg_names = method.func_code.co_varnames
+            arg_names = method.__code__.co_varnames
             if 'what' in arg_names and 'where' in arg_names: 
                 return method(what=what, where=where)
             elif 'what' in arg_names: 
@@ -179,11 +179,11 @@ class World(object):
                                 
     def print_state(self):
         for thing in self.things: 
-            print thing.ID
-            print thing.state
+            print(thing.ID)
+            print(thing.state)
             for location in self.locations[thing.ID]:
-                print location
-            print "------------------"
+                print(location)
+            print("------------------")
                 
 class Thing(object): 
     """

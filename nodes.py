@@ -81,7 +81,7 @@ class MotorSystem:
         if action_text is not None:
 
             if not self.integrating(time) and not self.acting(time): 
-                print 'performing action ' + action_text
+                print('performing action ' + action_text)
                 self.world.do(self.action_to_thing[action_text], action_text)
                 self.action_start_time = time
 
